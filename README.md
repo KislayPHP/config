@@ -1,6 +1,19 @@
-# kislayphp_config
+# KislayPHP Config
 
 Config service client extension for KislayPHP.
+
+## Repository
+
+- https://github.com/KislayPHP/config
+
+## Related Modules
+
+- https://github.com/KislayPHP/core
+- https://github.com/KislayPHP/eventbus
+- https://github.com/KislayPHP/discovery
+- https://github.com/KislayPHP/gateway
+- https://github.com/KislayPHP/metrics
+- https://github.com/KislayPHP/queue
 
 ## Build
 
@@ -13,7 +26,7 @@ make
 ## Run Locally
 
 ```sh
-cd /path/to/phpExtension/kislayphp_config
+cd /path/to/config
 php -d extension=modules/kislayphp_config.so example.php
 ```
 
