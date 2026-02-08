@@ -1,6 +1,20 @@
 # KislayPHP Config
 
-Config service client extension for KislayPHP.
+KislayPHP Config is a lightweight in-memory configuration client for PHP services.
+
+## Key Features
+
+- Simple get/set API for config values.
+- Store and retrieve key/value pairs in memory.
+
+## Use Cases
+
+- Local configuration while prototyping.
+- Simple config injection during tests.
+
+## SEO Keywords
+
+PHP config client, in-memory config, key value store, C++ PHP extension
 
 ## Repository
 
