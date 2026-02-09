@@ -1,11 +1,11 @@
 # KislayPHP Config
 
-KislayPHP Config is a lightweight in-memory configuration client for PHP services.
+KislayPHP Config is a lightweight configuration client for PHP services and microservices.
 
 ## Key Features
 
 - Simple get/set API for config values.
-- Store and retrieve key/value pairs in memory.
+- Store and retrieve key/value pairs in memory or via a custom client.
 
 ## Use Cases
 
@@ -14,7 +14,7 @@ KislayPHP Config is a lightweight in-memory configuration client for PHP service
 
 ## SEO Keywords
 
-PHP config client, in-memory config, key value store, C++ PHP extension
+PHP config client, configuration store, key value store, C++ PHP extension, microservices
 
 ## Repository
 
@@ -42,6 +42,19 @@ make
 ```sh
 cd /path/to/config
 php -d extension=modules/kislayphp_config.so example.php
+```
+
+## Custom Client Interface
+
+Default is in-memory. To plug in Redis, MySQL, Mongo, or any other backend, provide
+your own PHP client that implements `KislayPHP\Config\ClientInterface` and call
+`setClient()`.
+
+Example:
+
+```php
+$cfg = new KislayPHP\Config\ConfigClient();
+$cfg->setClient(new MyConfigClient());
 ```
 
 ## Example
