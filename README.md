@@ -29,7 +29,21 @@ PHP config client, configuration store, key value store, C++ PHP extension, micr
 - https://github.com/KislayPHP/metrics
 - https://github.com/KislayPHP/queue
 
-## Build
+## Installation
+
+### Via PECL
+
+```bash
+pecl install kislayphp_config
+```
+
+Then add to your php.ini:
+
+```ini
+extension=kislayphp_config.so
+```
+
+### Manual Build
 
 ```sh
 phpize

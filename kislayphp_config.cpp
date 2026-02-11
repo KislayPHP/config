@@ -9,6 +9,7 @@ extern "C" {
 #include "php_kislayphp_config.h"
 
 #include <cstring>
+#include <pthread.h>
 #include <string>
 #include <unordered_map>
 
@@ -60,10 +61,11 @@ static zend_class_entry *kislayphp_config_ce;
 static zend_class_entry *kislayphp_config_client_ce;
 
 typedef struct _php_kislayphp_config_t {
-    zend_object std;
     std::unordered_map<std::string, std::string> values;
+    pthread_mutex_t lock;
     zval client;
     bool has_client;
+    zend_object std;
 } php_kislayphp_config_t;
 
 static zend_object_handlers kislayphp_config_handlers;
@@ -79,6 +81,7 @@ static zend_object *kislayphp_config_create_object(zend_class_entry *ce) {
     zend_object_std_init(&obj->std, ce);
     object_properties_init(&obj->std, ce);
     new (&obj->values) std::unordered_map<std::string, std::string>();
+    pthread_mutex_init(&obj->lock, nullptr);
     ZVAL_UNDEF(&obj->client);
     obj->has_client = false;
     obj->std.handlers = &kislayphp_config_handlers;
@@ -91,6 +94,7 @@ static void kislayphp_config_free_obj(zend_object *object) {
         zval_ptr_dtor(&obj->client);
     }
     obj->values.~unordered_map();
+    pthread_mutex_destroy(&obj->lock);
     zend_object_std_dtor(&obj->std);
 }
 
@@ -172,7 +176,9 @@ PHP_METHOD(KislayPHPConfig, set) {
         return;
     }
 
+    pthread_mutex_lock(&obj->lock);
     obj->values[std::string(key, key_len)] = std::string(value, value_len);
+    pthread_mutex_unlock(&obj->lock);
     RETURN_TRUE;
 }
 
@@ -207,14 +213,22 @@ PHP_METHOD(KislayPHPConfig, get) {
         return;
     }
 
+    std::string value;
+    bool found = false;
+    pthread_mutex_lock(&obj->lock);
     auto it = obj->values.find(std::string(key, key_len));
-    if (it == obj->values.end()) {
+    if (it != obj->values.end()) {
+        value = it->second;
+        found = true;
+    }
+    pthread_mutex_unlock(&obj->lock);
+    if (!found) {
         if (default_val != nullptr) {
             RETURN_ZVAL(default_val, 1, 0);
         }
         RETURN_NULL();
     }
-    RETURN_STRING(it->second.c_str());
+    RETURN_STRING(value.c_str());
 }
 
 PHP_METHOD(KislayPHPConfig, all) {
@@ -233,9 +247,11 @@ PHP_METHOD(KislayPHPConfig, all) {
     }
 
     array_init(return_value);
+    pthread_mutex_lock(&obj->lock);
     for (const auto &entry : obj->values) {
         add_assoc_string(return_value, entry.first.c_str(), entry.second.c_str());
     }
+    pthread_mutex_unlock(&obj->lock);
 }
 
 static const zend_function_entry kislayphp_config_methods[] = {
