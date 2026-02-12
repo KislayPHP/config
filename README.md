@@ -5,7 +5,7 @@
 [![Build Status](https://img.shields.io/github/actions/workflow/status/KislayPHP/config/ci.yml)](https://github.com/KislayPHP/config/actions)
 [![codecov](https://codecov.io/gh/KislayPHP/config/branch/main/graph/badge.svg)](https://codecov.io/gh/KislayPHP/config)
 
-A high-performance C++ PHP extension providing dynamic configuration management for microservices with support for multiple backends and hot-reloading.
+A high-performance C++ PHP extension providing dynamic configuration management for microservices with support for multiple backends and hot-reloading. Perfect for PHP echo system integration and modern microservices architecture.
 
 ## ⚡ Key Features
 
@@ -16,6 +16,8 @@ A high-performance C++ PHP extension providing dynamic configuration management 
 - 📁 **File Support**: JSON, YAML, and INI configuration files
 - 🔧 **Hierarchical Config**: Namespace-based configuration organization
 - 📊 **Monitoring**: Configuration change tracking and metrics
+- 🔄 **PHP Echo System**: Seamless integration with PHP ecosystem and frameworks
+- 🌐 **Microservices Architecture**: Designed for distributed PHP applications
 
 ## 📦 Installation
 
@@ -302,3 +304,9 @@ var_dump($cfg->get('db.host'));
 print_r($cfg->all());
 ?>
 ```
+
+## SEO Keywords
+
+PHP, microservices, PHP echo system, PHP extension, C++ PHP extension, PHP configuration management, dynamic PHP config, PHP hot reloading, PHP Consul, PHP etcd, PHP Redis config, PHP microservices config, distributed PHP configuration
+
+---
