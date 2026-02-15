@@ -20,9 +20,9 @@ The extension uses a client interface pattern allowing different configuration b
 
 ## Installation
 
-### Via PECL
+### Via PIE
 ```bash
-pecl install kislayphp_config
+pie install kislayphp/config
 ```
 
 ### Manual Build

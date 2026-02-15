@@ -21,10 +21,10 @@ A high-performance C++ PHP extension providing dynamic configuration management 
 
 ## 📦 Installation
 
-### Via PECL (Recommended)
+### Via PIE (Recommended)
 
 ```bash
-pecl install kislayphp_config
+pie install kislayphp/config
 ```
 
 Add to your `php.ini`:
@@ -48,7 +48,6 @@ sudo make install
 
 ```dockerfile
 FROM php:8.2-cli
-RUN pecl install kislayphp_config && docker-php-ext-enable kislayphp_config
 ```
 
 ## 🚀 Quick Start
@@ -250,10 +249,10 @@ Licensed under the [Apache License 2.0](LICENSE).
 
 ## Installation
 
-### Via PECL
+### Via PIE
 
 ```bash
-pecl install kislayphp_config
+pie install kislayphp/config
 ```
 
 Then add to your php.ini:
