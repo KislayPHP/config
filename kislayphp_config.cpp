@@ -115,6 +115,14 @@ ZEND_BEGIN_ARG_INFO_EX(arginfo_kislayphp_config_set_client, 0, 0, 1)
     ZEND_ARG_OBJ_INFO(0, client, KislayPHP\\Config\\ClientInterface, 0)
 ZEND_END_ARG_INFO()
 
+ZEND_BEGIN_ARG_INFO_EX(arginfo_kislayphp_config_has, 0, 0, 1)
+    ZEND_ARG_TYPE_INFO(0, key, IS_STRING, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_INFO_EX(arginfo_kislayphp_config_remove, 0, 0, 1)
+    ZEND_ARG_TYPE_INFO(0, key, IS_STRING, 0)
+ZEND_END_ARG_INFO()
+
 PHP_METHOD(KislayPHPConfig, __construct) {
     ZEND_PARSE_PARAMETERS_NONE();
 }
@@ -254,12 +262,86 @@ PHP_METHOD(KislayPHPConfig, all) {
     pthread_mutex_unlock(&obj->lock);
 }
 
+PHP_METHOD(KislayPHPConfig, has) {
+    char *key = nullptr;
+    size_t key_len = 0;
+    ZEND_PARSE_PARAMETERS_START(1, 1)
+        Z_PARAM_STRING(key, key_len)
+    ZEND_PARSE_PARAMETERS_END();
+
+    php_kislayphp_config_t *obj = php_kislayphp_config_from_obj(Z_OBJ_P(getThis()));
+    if (obj->has_client) {
+        zval key_zv;
+        ZVAL_STRINGL(&key_zv, key, key_len);
+
+        zval retval;
+        ZVAL_UNDEF(&retval);
+        zend_call_method_with_1_params(Z_OBJ(obj->client), Z_OBJCE(obj->client), nullptr, "get", &retval, &key_zv);
+        zval_ptr_dtor(&key_zv);
+
+        if (Z_ISUNDEF(retval) || Z_TYPE(retval) == IS_NULL) {
+            if (!Z_ISUNDEF(retval)) {
+                zval_ptr_dtor(&retval);
+            }
+            RETURN_FALSE;
+        }
+        zval_ptr_dtor(&retval);
+        RETURN_TRUE;
+    }
+
+    bool found = false;
+    pthread_mutex_lock(&obj->lock);
+    auto it = obj->values.find(std::string(key, key_len));
+    found = (it != obj->values.end());
+    pthread_mutex_unlock(&obj->lock);
+    RETURN_BOOL(found);
+}
+
+PHP_METHOD(KislayPHPConfig, remove) {
+    char *key = nullptr;
+    size_t key_len = 0;
+    ZEND_PARSE_PARAMETERS_START(1, 1)
+        Z_PARAM_STRING(key, key_len)
+    ZEND_PARSE_PARAMETERS_END();
+
+    php_kislayphp_config_t *obj = php_kislayphp_config_from_obj(Z_OBJ_P(getThis()));
+    if (obj->has_client) {
+        zval key_zv;
+        ZVAL_STRINGL(&key_zv, key, key_len);
+        zval null_zv;
+        ZVAL_NULL(&null_zv);
+
+        zval retval;
+        ZVAL_UNDEF(&retval);
+        zend_call_method_with_2_params(Z_OBJ(obj->client), Z_OBJCE(obj->client), nullptr, "set", &retval, &key_zv, &null_zv);
+        zval_ptr_dtor(&key_zv);
+
+        if (Z_ISUNDEF(retval)) {
+            RETURN_TRUE;
+        }
+        RETVAL_ZVAL(&retval, 1, 1);
+        return;
+    }
+
+    bool removed = false;
+    pthread_mutex_lock(&obj->lock);
+    auto it = obj->values.find(std::string(key, key_len));
+    if (it != obj->values.end()) {
+        obj->values.erase(it);
+        removed = true;
+    }
+    pthread_mutex_unlock(&obj->lock);
+    RETURN_BOOL(removed);
+}
+
 static const zend_function_entry kislayphp_config_methods[] = {
     PHP_ME(KislayPHPConfig, __construct, arginfo_kislayphp_config_void, ZEND_ACC_PUBLIC)
     PHP_ME(KislayPHPConfig, setClient, arginfo_kislayphp_config_set_client, ZEND_ACC_PUBLIC)
     PHP_ME(KislayPHPConfig, set, arginfo_kislayphp_config_set, ZEND_ACC_PUBLIC)
     PHP_ME(KislayPHPConfig, get, arginfo_kislayphp_config_get, ZEND_ACC_PUBLIC)
     PHP_ME(KislayPHPConfig, all, arginfo_kislayphp_config_void, ZEND_ACC_PUBLIC)
+    PHP_ME(KislayPHPConfig, has, arginfo_kislayphp_config_has, ZEND_ACC_PUBLIC)
+    PHP_ME(KislayPHPConfig, remove, arginfo_kislayphp_config_remove, ZEND_ACC_PUBLIC)
     PHP_FE_END
 };
 

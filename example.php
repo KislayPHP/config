@@ -2,7 +2,14 @@
 // Run from this folder with:
 // php -d extension=modules/kislayphp_config.so example.php
 
-extension_loaded('kislayphp_config') or die('kislayphp_config not loaded');
+function fail(string $message): void {
+	echo "FAIL: {$message}\n";
+	exit(1);
+}
+
+if (!extension_loaded('kislayphp_config')) {
+	fail('kislayphp_config not loaded');
+}
 
 $cfg = new KislayPHP\Config\ConfigClient();
 
@@ -23,12 +30,19 @@ class ArrayConfigClient implements KislayPHP\Config\ClientInterface {
 	}
 }
 
-$use_client = false;
-if ($use_client) {
-	$cfg->setClient(new ArrayConfigClient());
-}
+$cfg->setClient(new ArrayConfigClient());
+
 $cfg->set('db.host', '127.0.0.1');
 $cfg->set('db.port', '5432');
 
-var_dump($cfg->get('db.host'));
-print_r($cfg->all());
+$host = $cfg->get('db.host');
+if ($host !== '127.0.0.1') {
+	fail('db.host mismatch');
+}
+
+$all = $cfg->all();
+if (!is_array($all) || ($all['db.host'] ?? null) !== '127.0.0.1') {
+	fail('all() missing db.host');
+}
+
+echo "OK: config example passed\n";
