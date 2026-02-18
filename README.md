@@ -5,18 +5,18 @@
 [![Build Status](https://img.shields.io/github/actions/workflow/status/KislayPHP/config/ci.yml)](https://github.com/KislayPHP/config/actions)
 [![codecov](https://codecov.io/gh/KislayPHP/config/branch/main/graph/badge.svg)](https://codecov.io/gh/KislayPHP/config)
 
-A high-performance C++ PHP extension providing dynamic configuration management for microservices with support for multiple backends and hot-reloading. Perfect for PHP echo system integration and modern microservices architecture.
+A high-performance C++ PHP extension providing dynamic configuration management for microservices with support for multiple backends and hot-reloading. Perfect for PHP ecosystem integration and modern microservices architecture.
 
 ## ⚡ Key Features
 
 - 🚀 **High Performance**: Fast configuration retrieval with caching
 - 🔄 **Hot Reloading**: Dynamic configuration updates without restart
-- 🔌 **Pluggable Backends**: Support for Consul, etcd, Redis, and custom clients
+- 🔌 **Pluggable Backends**: Support for external registry, distributed KV store, KV store, and custom clients
 - 🌐 **Environment Integration**: Automatic environment variable loading
 - 📁 **File Support**: JSON, YAML, and INI configuration files
 - 🔧 **Hierarchical Config**: Namespace-based configuration organization
 - 📊 **Monitoring**: Configuration change tracking and metrics
-- 🔄 **PHP Echo System**: Seamless integration with PHP ecosystem and frameworks
+- 🔄 **PHP Ecosystem**: Seamless integration with PHP ecosystem and frameworks
 - 🌐 **Microservices Architecture**: Designed for distributed PHP applications
 
 ## 📦 Installation
@@ -44,9 +44,9 @@ make
 sudo make install
 ```
 
-### Docker
+### container
 
-```dockerfile
+```containerfile
 FROM php:8.2-cli
 ```
 
@@ -84,16 +84,16 @@ if ($config->has('database.host')) {
 ```php
 <?php
 
-// Use Consul backend
+// Use external registry backend
 $config = new KislayConfig([
-    'backend' => 'consul',
-    'consul' => [
-        'host' => 'consul-server:8500',
-        'token' => 'your-consul-token'
+    'backend' => 'registry',
+    'registry' => [
+        'host' => 'registry-server:8500',
+        'token' => 'your-registry-token'
     ]
 ]);
 
-// Configuration automatically loaded from Consul
+// Configuration automatically loaded from external registry
 $appName = $config->get('app.name');
 $databaseUrl = $config->get('database.url');
 ```
@@ -150,8 +150,8 @@ KislayPHP Config implements a flexible configuration system:
             ┌─────────────────┐
             │ Configuration   │
             │ Backends        │
-            │ (Consul/etcd/   │
-            │  Redis/Custom)  │
+            │ (external registry/distributed KV store/   │
+            │  KV store/Custom)  │
             └─────────────────┘
 ```
 
@@ -189,15 +189,15 @@ kislayphp.config.reload_interval = 60
 
 ; Backend settings
 kislayphp.config.backend = "memory"
-kislayphp.config.consul_host = "localhost:8500"
-kislayphp.config.etcd_endpoints = "localhost:2379"
+kislayphp.config.registry_host = "localhost:8500"
+kislayphp.config.distributed KV store_endpoints = "localhost:2379"
 ```
 
 ### Environment Variables
 
 ```bash
-export KISLAYPHP_CONFIG_BACKEND=consul
-export KISLAYPHP_CONFIG_CONSUL_HOST=consul-server:8500
+export KISLAYPHP_CONFIG_BACKEND=registry
+export KISLAYPHP_CONFIG_REGISTRY_HOST=registry-server:8500
 export KISLAYPHP_CONFIG_CACHE_SIZE=1000
 export KISLAYPHP_CONFIG_HOT_RELOAD=1
 ```
@@ -210,8 +210,8 @@ php run-tests.php
 
 # Test with different backends
 cd tests/
-php test_consul_backend.php
-php test_etcd_backend.php
+php test_registry_backend.php
+php test_distributed KV store_backend.php
 ```
 
 ## 🤝 Contributing
@@ -231,7 +231,7 @@ Licensed under the [Apache License 2.0](LICENSE).
 
 ## 📈 Roadmap
 
-- [ ] Kubernetes ConfigMap integration
+- [ ] orchestrator config map integration
 - [ ] AWS Parameter Store support
 - [ ] Azure Key Vault integration
 - [ ] Configuration validation schemas
@@ -239,8 +239,8 @@ Licensed under the [Apache License 2.0](LICENSE).
 
 ## 🙏 Acknowledgments
 
-- **Consul**: Service discovery and configuration
-- **etcd**: Distributed key-value store
+- **external registry**: Service discovery and configuration
+- **distributed KV store**: Distributed KV store
 - **PHP**: Zend API for extension development
 
 ---
@@ -278,7 +278,7 @@ php -d extension=modules/kislayphp_config.so example.php
 
 ## Custom Client Interface
 
-Default is in-memory. To plug in Redis, MySQL, Mongo, or any other backend, provide
+Default is in-memory. To plug in KV store, MySQL, Mongo, or any other backend, provide
 your own PHP client that implements `KislayPHP\Config\ClientInterface` and call
 `setClient()`.
 
@@ -306,6 +306,6 @@ print_r($cfg->all());
 
 ## SEO Keywords
 
-PHP, microservices, PHP echo system, PHP extension, C++ PHP extension, PHP configuration management, dynamic PHP config, PHP hot reloading, PHP Consul, PHP etcd, PHP Redis config, PHP microservices config, distributed PHP configuration
+PHP, microservices, PHP ecosystem, PHP extension, C++ PHP extension, PHP configuration management, dynamic PHP config, PHP hot reloading, PHP external registry, PHP distributed KV store, PHP KV store config, PHP microservices config, distributed PHP configuration
 
 ---

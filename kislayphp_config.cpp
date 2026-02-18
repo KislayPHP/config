@@ -8,10 +8,19 @@ extern "C" {
 
 #include "php_kislayphp_config.h"
 
+#include <chrono>
 #include <cstring>
 #include <pthread.h>
+#include <cstdlib>
+#include <mutex>
 #include <string>
 #include <unordered_map>
+
+#ifdef KISLAYPHP_RPC
+#include <grpcpp/grpcpp.h>
+
+#include "platform.grpc.pb.h"
+#endif
 
 #ifndef zend_call_method_with_0_params
 static inline void kislayphp_call_method_with_0_params(
@@ -59,6 +68,188 @@ static inline void kislayphp_call_method_with_2_params(
 #endif
 static zend_class_entry *kislayphp_config_ce;
 static zend_class_entry *kislayphp_config_client_ce;
+
+static zend_long kislayphp_env_long(const char *name, zend_long fallback) {
+    const char *value = std::getenv(name);
+    if (value == nullptr || *value == '\0') {
+        return fallback;
+    }
+    return static_cast<zend_long>(std::strtoll(value, nullptr, 10));
+}
+
+static bool kislayphp_env_bool(const char *name, bool fallback) {
+    const char *value = std::getenv(name);
+    if (value == nullptr || *value == '\0') {
+        return fallback;
+    }
+    if (std::strcmp(value, "1") == 0 || std::strcmp(value, "true") == 0 || std::strcmp(value, "TRUE") == 0) {
+        return true;
+    }
+    if (std::strcmp(value, "0") == 0 || std::strcmp(value, "false") == 0 || std::strcmp(value, "FALSE") == 0) {
+        return false;
+    }
+    return fallback;
+}
+
+static std::string kislayphp_env_string(const char *name, const std::string &fallback) {
+    const char *value = std::getenv(name);
+    if (value == nullptr || *value == '\0') {
+        return fallback;
+    }
+    return std::string(value);
+}
+
+#ifdef KISLAYPHP_RPC
+static bool kislayphp_rpc_enabled() {
+    return kislayphp_env_bool("KISLAY_RPC_ENABLED", false);
+}
+
+static zend_long kislayphp_rpc_timeout_ms() {
+    zend_long timeout = kislayphp_env_long("KISLAY_RPC_TIMEOUT_MS", 200);
+    return timeout > 0 ? timeout : 200;
+}
+
+static std::string kislayphp_rpc_platform_endpoint() {
+    return kislayphp_env_string("KISLAY_RPC_PLATFORM_ENDPOINT", "127.0.0.1:9100");
+}
+
+static kislay::platform::v1::ConfigService::Stub *kislayphp_rpc_config_stub(const std::string &endpoint) {
+    static std::mutex lock;
+    static std::string cached_endpoint;
+    static std::shared_ptr<grpc::Channel> channel;
+    static std::unique_ptr<kislay::platform::v1::ConfigService::Stub> stub;
+    std::lock_guard<std::mutex> guard(lock);
+    if (!stub || cached_endpoint != endpoint) {
+        channel = grpc::CreateChannel(endpoint, grpc::InsecureChannelCredentials());
+        stub = kislay::platform::v1::ConfigService::NewStub(channel);
+        cached_endpoint = endpoint;
+    }
+    return stub.get();
+}
+
+static bool kislayphp_rpc_config_set(const std::string &key, const std::string &value, std::string *error) {
+    auto *stub = kislayphp_rpc_config_stub(kislayphp_rpc_platform_endpoint());
+    if (!stub) {
+        if (error) {
+            *error = "RPC stub unavailable";
+        }
+        return false;
+    }
+
+    kislay::platform::v1::SetRequest request;
+    request.set_key(key);
+    request.set_value(value);
+
+    kislay::platform::v1::SetResponse response;
+    grpc::ClientContext context;
+    context.set_deadline(std::chrono::system_clock::now() + std::chrono::milliseconds(kislayphp_rpc_timeout_ms()));
+
+    grpc::Status status = stub->Set(&context, request, &response);
+    if (!status.ok()) {
+        if (error) {
+            *error = status.error_message();
+        }
+        return false;
+    }
+    if (!response.ok()) {
+        if (error) {
+            *error = response.error();
+        }
+        return false;
+    }
+    return true;
+}
+
+static bool kislayphp_rpc_config_get(const std::string &key, std::string *value, bool *found, std::string *error) {
+    auto *stub = kislayphp_rpc_config_stub(kislayphp_rpc_platform_endpoint());
+    if (!stub) {
+        if (error) {
+            *error = "RPC stub unavailable";
+        }
+        return false;
+    }
+
+    kislay::platform::v1::GetRequest request;
+    request.set_key(key);
+
+    kislay::platform::v1::GetResponse response;
+    grpc::ClientContext context;
+    context.set_deadline(std::chrono::system_clock::now() + std::chrono::milliseconds(kislayphp_rpc_timeout_ms()));
+
+    grpc::Status status = stub->Get(&context, request, &response);
+    if (!status.ok()) {
+        if (error) {
+            *error = status.error_message();
+        }
+        return false;
+    }
+
+    if (found) {
+        *found = response.found();
+    }
+    if (value) {
+        *value = response.value();
+    }
+    return true;
+}
+
+static bool kislayphp_rpc_config_all(zval *return_value, std::string *error) {
+    auto *stub = kislayphp_rpc_config_stub(kislayphp_rpc_platform_endpoint());
+    if (!stub) {
+        if (error) {
+            *error = "RPC stub unavailable";
+        }
+        return false;
+    }
+
+    kislay::platform::v1::AllRequest request;
+    kislay::platform::v1::AllResponse response;
+    grpc::ClientContext context;
+    context.set_deadline(std::chrono::system_clock::now() + std::chrono::milliseconds(kislayphp_rpc_timeout_ms()));
+
+    grpc::Status status = stub->All(&context, request, &response);
+    if (!status.ok()) {
+        if (error) {
+            *error = status.error_message();
+        }
+        return false;
+    }
+
+    array_init(return_value);
+    for (const auto &item : response.items()) {
+        add_assoc_string(return_value, item.key().c_str(), item.value().c_str());
+    }
+    return true;
+}
+
+static bool kislayphp_rpc_config_remove(const std::string &key, bool *ok, std::string *error) {
+    auto *stub = kislayphp_rpc_config_stub(kislayphp_rpc_platform_endpoint());
+    if (!stub) {
+        if (error) {
+            *error = "RPC stub unavailable";
+        }
+        return false;
+    }
+
+    kislay::platform::v1::RemoveRequest request;
+    request.set_key(key);
+    kislay::platform::v1::RemoveResponse response;
+    grpc::ClientContext context;
+    context.set_deadline(std::chrono::system_clock::now() + std::chrono::milliseconds(kislayphp_rpc_timeout_ms()));
+
+    grpc::Status status = stub->Remove(&context, request, &response);
+    if (!status.ok()) {
+        if (error) {
+            *error = status.error_message();
+        }
+        return false;
+    }
+    if (ok) {
+        *ok = response.ok();
+    }
+    return true;
+}
+#endif
 
 typedef struct _php_kislayphp_config_t {
     std::unordered_map<std::string, std::string> values;
@@ -184,6 +375,15 @@ PHP_METHOD(KislayPHPConfig, set) {
         return;
     }
 
+#ifdef KISLAYPHP_RPC
+    if (kislayphp_rpc_enabled()) {
+        std::string error;
+        if (kislayphp_rpc_config_set(std::string(key, key_len), std::string(value, value_len), &error)) {
+            RETURN_TRUE;
+        }
+    }
+#endif
+
     pthread_mutex_lock(&obj->lock);
     obj->values[std::string(key, key_len)] = std::string(value, value_len);
     pthread_mutex_unlock(&obj->lock);
@@ -221,6 +421,23 @@ PHP_METHOD(KislayPHPConfig, get) {
         return;
     }
 
+#ifdef KISLAYPHP_RPC
+    if (kislayphp_rpc_enabled()) {
+        std::string value;
+        bool found = false;
+        std::string error;
+        if (kislayphp_rpc_config_get(std::string(key, key_len), &value, &found, &error)) {
+            if (!found) {
+                if (default_val != nullptr) {
+                    RETURN_ZVAL(default_val, 1, 0);
+                }
+                RETURN_NULL();
+            }
+            RETURN_STRING(value.c_str());
+        }
+    }
+#endif
+
     std::string value;
     bool found = false;
     pthread_mutex_lock(&obj->lock);
@@ -253,6 +470,15 @@ PHP_METHOD(KislayPHPConfig, all) {
         RETVAL_ZVAL(&retval, 1, 1);
         return;
     }
+
+#ifdef KISLAYPHP_RPC
+    if (kislayphp_rpc_enabled()) {
+        std::string error;
+        if (kislayphp_rpc_config_all(return_value, &error)) {
+            return;
+        }
+    }
+#endif
 
     array_init(return_value);
     pthread_mutex_lock(&obj->lock);
@@ -289,6 +515,17 @@ PHP_METHOD(KislayPHPConfig, has) {
         RETURN_TRUE;
     }
 
+#ifdef KISLAYPHP_RPC
+    if (kislayphp_rpc_enabled()) {
+        std::string value;
+        bool found = false;
+        std::string error;
+        if (kislayphp_rpc_config_get(std::string(key, key_len), &value, &found, &error)) {
+            RETURN_BOOL(found);
+        }
+    }
+#endif
+
     bool found = false;
     pthread_mutex_lock(&obj->lock);
     auto it = obj->values.find(std::string(key, key_len));
@@ -322,6 +559,16 @@ PHP_METHOD(KislayPHPConfig, remove) {
         RETVAL_ZVAL(&retval, 1, 1);
         return;
     }
+
+#ifdef KISLAYPHP_RPC
+    if (kislayphp_rpc_enabled()) {
+        std::string error;
+        bool ok = false;
+        if (kislayphp_rpc_config_remove(std::string(key, key_len), &ok, &error)) {
+            RETURN_BOOL(ok);
+        }
+    }
+#endif
 
     bool removed = false;
     pthread_mutex_lock(&obj->lock);

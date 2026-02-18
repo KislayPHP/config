@@ -14,7 +14,7 @@ The KislayPHP Config extension provides a unified configuration management syste
 ### Client Interface Pattern
 The extension uses a client interface pattern allowing different configuration backends:
 - HTTP-based config servers
-- Redis
+- KV store
 - Database
 - Custom implementations
 
@@ -253,39 +253,39 @@ class HttpClient implements KislayPHP\\Config\\ClientInterface {
 }
 ```
 
-### Redis Client
+### KV store Client
 ```php
 <?php
-class RedisClient implements KislayPHP\\Config\\ClientInterface {
-    private $redis;
+class KeyValueStoreClient implements KislayPHP\\Config\\ClientInterface {
+    private $KV store;
     private $prefix;
 
     public function __construct(string $host = 'localhost', int $port = 6379, string $prefix = 'config:') {
-        $this->redis = new Redis();
-        $this->redis->connect($host, $port);
+        $this->KV store = new KV store();
+        $this->KV store->connect($host, $port);
         $this->prefix = $prefix;
     }
 
     public function get(string $key, $default = null) {
-        $value = $this->redis->get($this->prefix . $key);
+        $value = $this->KV store->get($this->prefix . $key);
         return $value !== false ? json_decode($value, true) : $default;
     }
 
     public function set(string $key, $value): bool {
-        return $this->redis->set($this->prefix . $key, json_encode($value));
+        return $this->KV store->set($this->prefix . $key, json_encode($value));
     }
 
     public function has(string $key): bool {
-        return $this->redis->exists($this->prefix . $key);
+        return $this->KV store->exists($this->prefix . $key);
     }
 
     public function all(): array {
-        $keys = $this->redis->keys($this->prefix . '*');
+        $keys = $this->KV store->keys($this->prefix . '*');
         $config = [];
 
         foreach ($keys as $key) {
             $configKey = str_replace($this->prefix, '', $key);
-            $config[$configKey] = json_decode($this->redis->get($key), true);
+            $config[$configKey] = json_decode($this->KV store->get($key), true);
         }
 
         return $config;
@@ -449,12 +449,12 @@ class EncryptedConfig extends Config {
 
     private function encrypt($value): string {
         $json = json_encode($value);
-        // Use openssl_encrypt or similar
-        return openssl_encrypt($json, 'aes-256-cbc', $this->encryptionKey, 0, $this->getIv());
+        // Use crypto_encrypt or similar
+        return crypto_encrypt($json, 'aes-256-cbc', $this->encryptionKey, 0, $this->getIv());
     }
 
     private function decrypt(string $encrypted): mixed {
-        $decrypted = openssl_decrypt($encrypted, 'aes-256-cbc', $this->encryptionKey, 0, $this->getIv());
+        $decrypted = crypto_decrypt($encrypted, 'aes-256-cbc', $this->encryptionKey, 0, $this->getIv());
         return json_decode($decrypted, true);
     }
 
@@ -521,7 +521,7 @@ $config->set('app.env', 'invalid'); // Throws exception
 
 ## Integration Examples
 
-### Laravel Integration
+### KislayPHP Integration
 ```php
 <?php
 // config/kislay.php
@@ -560,7 +560,7 @@ class UserController extends Controller {
 }
 ```
 
-### Symfony Integration
+### Framework Integration
 ```php
 <?php
 // src/Service/KislayConfig.php
@@ -839,7 +839,7 @@ print_r($stats);
 
 ### Configuration Organization
 1. **Use hierarchical keys**: `database.host`, `database.port`, `api.rate_limit`
-2. **Group related settings**: `cache.redis.host`, `cache.redis.port`, `cache.redis.ttl`
+2. **Group related settings**: `cache.kv_store.host`, `cache.kv_store.port`, `cache.kv_store.ttl`
 3. **Use consistent naming**: snake_case for keys, camelCase for values when appropriate
 4. **Document all configuration keys** in your application documentation
 
