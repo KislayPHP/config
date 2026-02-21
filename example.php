@@ -11,9 +11,9 @@ if (!extension_loaded('kislayphp_config')) {
 	fail('kislayphp_config not loaded');
 }
 
-$cfg = new KislayPHP\Config\ConfigClient();
+$cfg = new Kislay\Config\ConfigClient();
 
-class ArrayConfigClient implements KislayPHP\Config\ClientInterface {
+class ArrayConfigClient implements Kislay\Config\ClientInterface {
 	private array $data = [];
 
 	public function set(string $key, string $value): bool {

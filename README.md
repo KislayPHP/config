@@ -7,6 +7,9 @@
 
 A high-performance C++ PHP extension providing dynamic configuration management for microservices with support for multiple backends and hot-reloading. Perfect for PHP ecosystem integration and modern microservices architecture.
 
+Primary runtime namespace is `Kislay\Config` (legacy `KislayPHP\Config` aliases are kept for compatibility).
+For service-to-service config policy, see `SERVICE_COMMUNICATION.md` and `service_communication.php`.
+
 ## ⚡ Key Features
 
 - 🚀 **High Performance**: Fast configuration retrieval with caching

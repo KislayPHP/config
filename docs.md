@@ -1,5 +1,8 @@
 # KislayPHP Config Extension Documentation
 
+Primary namespace is `Kislay\Config` with backward-compatible aliases under `KislayPHP\Config`.
+See `SERVICE_COMMUNICATION.md` for service call policy patterns.
+
 ## Overview
 
 The KislayPHP Config extension provides a unified configuration management system for PHP applications. It supports both local configuration storage and external configuration servers, with features like hot-reloading, environment variable overrides, and pluggable client interfaces.

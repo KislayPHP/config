@@ -303,7 +303,7 @@ ZEND_BEGIN_ARG_INFO_EX(arginfo_kislayphp_config_get, 0, 0, 1)
 ZEND_END_ARG_INFO()
 
 ZEND_BEGIN_ARG_INFO_EX(arginfo_kislayphp_config_set_client, 0, 0, 1)
-    ZEND_ARG_OBJ_INFO(0, client, KislayPHP\\Config\\ClientInterface, 0)
+    ZEND_ARG_OBJ_INFO(0, client, Kislay\\Config\\ClientInterface, 0)
 ZEND_END_ARG_INFO()
 
 ZEND_BEGIN_ARG_INFO_EX(arginfo_kislayphp_config_has, 0, 0, 1)
@@ -330,7 +330,7 @@ PHP_METHOD(KislayPHPConfig, setClient) {
     }
 
     if (!instanceof_function(Z_OBJCE_P(client), kislayphp_config_client_ce)) {
-        zend_throw_exception(zend_ce_exception, "Client must implement KislayPHP\\Config\\ClientInterface", 0);
+        zend_throw_exception(zend_ce_exception, "Client must implement Kislay\\Config\\ClientInterface", 0);
         RETURN_FALSE;
     }
 
@@ -601,10 +601,13 @@ static const zend_function_entry kislayphp_config_client_methods[] = {
 
 PHP_MINIT_FUNCTION(kislayphp_config) {
     zend_class_entry ce;
-    INIT_NS_CLASS_ENTRY(ce, "KislayPHP\\Config", "ClientInterface", kislayphp_config_client_methods);
+    INIT_NS_CLASS_ENTRY(ce, "Kislay\\Config", "ClientInterface", kislayphp_config_client_methods);
     kislayphp_config_client_ce = zend_register_internal_interface(&ce);
-    INIT_NS_CLASS_ENTRY(ce, "KislayPHP\\Config", "ConfigClient", kislayphp_config_methods);
+    zend_register_class_alias("KislayPHP\\Config\\ClientInterface", kislayphp_config_client_ce);
+
+    INIT_NS_CLASS_ENTRY(ce, "Kislay\\Config", "ConfigClient", kislayphp_config_methods);
     kislayphp_config_ce = zend_register_internal_class(&ce);
+    zend_register_class_alias("KislayPHP\\Config\\ConfigClient", kislayphp_config_ce);
     kislayphp_config_ce->create_object = kislayphp_config_create_object;
     std::memcpy(&kislayphp_config_handlers, zend_get_std_object_handlers(), sizeof(zend_object_handlers));
     kislayphp_config_handlers.offset = XtOffsetOf(php_kislayphp_config_t, std);

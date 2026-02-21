@@ -5,7 +5,7 @@ extern "C" {
 #include "php.h"
 }
 
-#define PHP_KISLAYPHP_CONFIG_VERSION "0.1"
+#define PHP_KISLAYPHP_CONFIG_VERSION "0.0.1"
 #define PHP_KISLAYPHP_CONFIG_EXTNAME "kislayphp_config"
 
 extern zend_module_entry kislayphp_config_module_entry;
