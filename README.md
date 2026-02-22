@@ -134,6 +134,8 @@ $config->loadFromFile('/path/to/config.ini');
 ## 📚 Documentation
 
 📖 **[Complete Documentation](docs.md)** - API reference, backend integrations, examples, and best practices
+- 📘 **[Class Reference](CLASS_REFERENCE.md)** - Config classes and method behavior
+- 🚀 **[Deployment Guide](https://github.com/KislayPHP/core/blob/main/docs/DEPLOYMENT_GUIDE_MULTI_ENV.md)** - Docker/AWS/cloud/on-prem runbook
 
 ## 🏗️ Architecture
 
