@@ -27,7 +27,7 @@ For service-to-service config policy, see `SERVICE_COMMUNICATION.md` and `servic
 ### Via PIE (Recommended)
 
 ```bash
-pie install kislayphp/config
+pie install kislayphp/config:0.0.2
 ```
 
 Add to your `php.ini`:

@@ -639,11 +639,12 @@ zend_module_entry kislayphp_config_module_entry = {
     STANDARD_MODULE_PROPERTIES
 };
 
-#if defined(COMPILE_DL_KISLAYPHP_CONFIG) || defined(ZEND_COMPILE_DL_EXT)
 #ifdef ZTS
 ZEND_TSRMLS_CACHE_DEFINE();
 #endif
+
 extern "C" {
-ZEND_GET_MODULE(kislayphp_config)
+ZEND_DLEXPORT zend_module_entry *get_module(void) {
+    return &kislayphp_config_module_entry;
 }
-#endif
+}
