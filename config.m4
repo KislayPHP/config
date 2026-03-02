@@ -3,6 +3,7 @@ PHP_ARG_ENABLE(kislayphp_config, whether to enable kislayphp_config,
 
 if test "$PHP_KISLAYPHP_CONFIG" != "no"; then
   PHP_REQUIRE_CXX()
+  PHP_ADD_LIBRARY(stdc++,, KISLAYPHP_CONFIG_SHARED_LIBADD)
   if test -f ../rpc/gen/platform.pb.cc; then
     RPC_GEN_DIR=`pwd`/../rpc/gen
     PHP_ADD_INCLUDE($RPC_GEN_DIR)
@@ -18,4 +19,5 @@ if test "$PHP_KISLAYPHP_CONFIG" != "no"; then
   fi
 
   PHP_NEW_EXTENSION(kislayphp_config, kislayphp_config.cpp $RPC_SRCS, $ext_shared)
+  PHP_SUBST(KISLAYPHP_CONFIG_SHARED_LIBADD)
 fi

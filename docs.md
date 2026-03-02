@@ -95,7 +95,7 @@ $config = new Config();
 
 // Set configuration values
 $config->set('app.name', 'MyApp');
-$config->set('app.version', '1.0.0');
+$config->set('app.version', '0.0.1');
 $config->set('database.host', 'localhost');
 $config->set('database.port', 3306);
 
