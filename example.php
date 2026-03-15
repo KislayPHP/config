@@ -1,48 +1,73 @@
 <?php
-// Run from this folder with:
-// php -d extension=modules/kislayphp_config.so example.php
-
-function fail(string $message): void {
-	echo "FAIL: {$message}\n";
-	exit(1);
-}
 
 if (!extension_loaded('kislayphp_config')) {
-	fail('kislayphp_config not loaded');
+    fwrite(STDERR, "kislayphp_config extension is not loaded\n");
+    exit(1);
 }
 
-$cfg = new Kislay\Config\ConfigClient();
+$mode = $argv[1] ?? null;
 
-class ArrayConfigClient implements Kislay\Config\ClientInterface {
-	private array $data = [];
+if ($mode === 'server') {
+    $server = new Kislay\Config\Server(['host' => '127.0.0.1', 'port' => 9011]);
+    $server->setGlobal([
+        'app' => ['name' => 'commerce-platform'],
+        'db' => ['port' => 3306],
+    ]);
+    $server->setEnvironment('prod', [
+        'app' => ['debug' => false],
+    ]);
+    $server->setProject('commerce', [
+        'log' => ['level' => 'warn'],
+    ]);
+    $server->setService('commerce', 'order-service', [
+        'db' => ['name' => 'orders'],
+        'workers' => ['queues' => ['orders', 'billing']],
+    ]);
+    $server->setNode('commerce', 'order-service', 'order-1', [
+        'metrics' => ['enabled' => false],
+    ]);
 
-	public function set(string $key, string $value): bool {
-		$this->data[$key] = $value;
-		return true;
-	}
-
-	public function get(string $key, mixed $default = null): mixed {
-		return $this->data[$key] ?? $default;
-	}
-
-	public function all(): array {
-		return $this->data;
-	}
+    echo "Config server running on http://127.0.0.1:9011\n";
+    $server->run();
+    exit(0);
 }
 
-$cfg->setClient(new ArrayConfigClient());
+if ($mode === 'client') {
+    file_put_contents(__DIR__ . '/example.local.json', json_encode([
+        'db' => ['host' => '127.0.0.1'],
+        'feature' => ['checkout' => true],
+    ], JSON_PRETTY_PRINT));
 
-$cfg->set('db.host', '127.0.0.1');
-$cfg->set('db.port', '5432');
+    putenv('KISLAY_CFG_LOG__LEVEL=error');
 
-$host = $cfg->get('db.host');
-if ($host !== '127.0.0.1') {
-	fail('db.host mismatch');
+    Kislay\Config\Config::boot([
+        'server' => 'http://127.0.0.1:9011',
+        'environment' => 'prod',
+        'project' => 'commerce',
+        'service' => 'order-service',
+        'node' => 'order-1',
+        'cache_file' => __DIR__ . '/example.cache.json',
+        'local_file' => __DIR__ . '/example.local.json',
+    ]);
+
+    Kislay\Config\Config::setOverride('db.port', 3307);
+
+    echo json_encode([
+        'app.name' => Kislay\Config\Config::getString('app.name'),
+        'app.debug' => Kislay\Config\Config::getBool('app.debug', true),
+        'db.host' => Kislay\Config\Config::getString('db.host'),
+        'db.port' => Kislay\Config\Config::getInt('db.port'),
+        'db.name' => Kislay\Config\Config::getString('db.name'),
+        'workers.queues' => Kislay\Config\Config::getArray('workers.queues'),
+        'metrics.enabled' => Kislay\Config\Config::getBool('metrics.enabled', true),
+        'log.level' => Kislay\Config\Config::getString('log.level'),
+        'version' => Kislay\Config\Config::version(),
+        'checksum' => Kislay\Config\Config::checksum(),
+    ], JSON_PRETTY_PRINT), PHP_EOL;
+    exit(0);
 }
 
-$all = $cfg->all();
-if (!is_array($all) || ($all['db.host'] ?? null) !== '127.0.0.1') {
-	fail('all() missing db.host');
-}
-
-echo "OK: config example passed\n";
+fwrite(STDERR, "Usage:\n");
+fwrite(STDERR, "  php -d extension=modules/kislayphp_config.so example.php server\n");
+fwrite(STDERR, "  php -d extension=modules/kislayphp_config.so example.php client\n");
+exit(1);

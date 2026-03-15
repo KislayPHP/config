@@ -5,107 +5,199 @@
 [![Build Status](https://img.shields.io/github/actions/workflow/status/KislayPHP/config/ci.yml?branch=main&label=CI)](https://github.com/KislayPHP/config/actions)
 [![PIE](https://img.shields.io/badge/install-pie-blueviolet)](https://github.com/php/pie)
 
-> **Centralized configuration for PHP microservices.** Environment-aware, namespace-scoped, hot-reloadable configuration — shared across services without a config server.
+`kislayphp/config` is a centralized configuration service and runtime client for multi-node PHP services.
 
-Part of the [KislayPHP ecosystem](https://skelves.com/kislayphp/docs).
+Phase 1 adds:
+- standalone config server
+- runtime client bootstrap with local cache support
+- layered config resolution for environment, project, service, and node scopes
+- local file, environment variable, and runtime overrides
 
----
+This package is part of the [KislayPHP ecosystem](https://skelves.com/kislayphp/docs).
 
-## ✨ What It Does
-
-`kislayphp/config` provides structured, namespace-scoped configuration management for distributed PHP services. Load from environment variables, INI files, or remote sources. Services share config without tight coupling.
-
-```php
-<?php
-$config = new Kislay\Config\Config();
-$config->set('db.host', getenv('DB_HOST') ?: 'localhost');
-
-$host = $config->get('db.host');  // 'localhost'
-```
-
----
-
-## 📦 Installation
+## Installation
 
 ```bash
 pie install kislayphp/config
 ```
 
-Enable in `php.ini`:
+Enable the extension:
+
 ```ini
 extension=kislayphp_config.so
 ```
 
----
+## Quick Start
 
-## 🚀 Quick Start
-
-```php
-<?php
-$config = new Kislay\Config\Config();
-
-// Load from environment
-$config->set('app.env',      getenv('APP_ENV') ?: 'production');
-$config->set('db.host',      getenv('DB_HOST') ?: 'localhost');
-$config->set('db.port',      (int) (getenv('DB_PORT') ?: 5432));
-$config->set('cache.ttl',    (int) (getenv('CACHE_TTL') ?: 3600));
-
-// Read anywhere in the application
-$dbHost  = $config->get('db.host');
-$appEnv  = $config->get('app.env');
-
-// Check existence before reading
-if ($config->has('feature.new_ui')) {
-    enable_new_ui();
-}
-
-// Delete a key
-$config->delete('temp.key');
-
-// Get all config as array
-$all = $config->all();
-```
-
-### Shared Config Across Services
+### 1. Start a config server
 
 ```php
 <?php
-// bootstrap.php — shared configuration singleton
-$config = new Kislay\Config\Config();
 
-$config->set('gateway.host',    getenv('GATEWAY_HOST') ?: '127.0.0.1');
-$config->set('gateway.port',    (int)(getenv('GATEWAY_PORT') ?: 9008));
-$config->set('metrics.enabled', (bool)(getenv('METRICS_ENABLED') ?: true));
+$server = new Kislay\Config\Server();
+$server->listen('0.0.0.0', 9011);
 
-// Pass to all services that need it
-$app->set('config', $config);
+$server->setGlobal([
+    'app' => ['name' => 'commerce-platform'],
+    'db' => ['port' => 3306],
+]);
+
+$server->setEnvironment('prod', [
+    'app' => ['debug' => false],
+]);
+
+$server->setProject('commerce', [
+    'log' => ['level' => 'warn'],
+]);
+
+$server->setService('commerce', 'order-service', [
+    'db' => ['name' => 'orders'],
+    'gateway' => ['timeout_ms' => 1200],
+]);
+
+$server->setNode('commerce', 'order-service', 'order-1', [
+    'metrics' => ['enabled' => false],
+]);
+
+$server->run();
 ```
 
----
-
-## 📖 Public API
+### 2. Load config inside a service
 
 ```php
-namespace Kislay\Config;
+<?php
 
-class Config {
-    public function __construct();
-    public function set(string $key, mixed $value): bool;
-    public function get(string $key, mixed $default = null): mixed;
-    public function has(string $key): bool;
-    public function delete(string $key): bool;
-    public function all(): array;
-}
+use Kislay\Config\Config;
+
+Config::boot([
+    'server' => 'http://127.0.0.1:9011',
+    'environment' => 'prod',
+    'project' => 'commerce',
+    'service' => 'order-service',
+    'node' => 'order-1',
+    'cache_file' => '/tmp/order-service-config.json',
+]);
+
+$dbName = Config::getString('db.name');
+$timeout = Config::getInt('gateway.timeout_ms', 1000);
+$debug = Config::getBool('app.debug', true);
 ```
 
-Legacy aliases: `KislayPHP\Config\Config`
+### 3. Add local overrides
 
----
+```php
+<?php
 
-## 🔗 Ecosystem
+Config::loadLocal('/etc/kislay/order-service.local.json');
+Config::setOverride('gateway.timeout_ms', 1500);
+```
 
-[core](https://github.com/KislayPHP/core) · [gateway](https://github.com/KislayPHP/gateway) · [discovery](https://github.com/KislayPHP/discovery) · [metrics](https://github.com/KislayPHP/metrics) · [queue](https://github.com/KislayPHP/queue) · [eventbus](https://github.com/KislayPHP/eventbus) · **config**
+## Resolution Order
 
-## 📄 License
+Config is merged in this order:
 
-[Apache License 2.0](LICENSE) · **[Full Docs](https://skelves.com/kislayphp/docs)**
+1. global
+2. environment
+3. project
+4. service
+5. node
+6. local file override
+7. environment variable override
+8. runtime override
+
+Environment variables use `KISLAY_CFG_` by default.
+
+Example:
+
+```bash
+export KISLAY_CFG_DB__HOST=127.0.0.1
+export KISLAY_CFG_LOG__LEVEL=error
+```
+
+Double underscore becomes `.` in the final config key.
+
+## Public API
+
+### `Kislay\Config\Config`
+
+```php
+Config::boot(array $options): bool
+Config::loadLocal(string $path): bool
+Config::refresh(): bool
+Config::setOverride(string $key, mixed $value): bool
+Config::has(string $key): bool
+Config::get(string $key, mixed $default = null): mixed
+Config::getString(string $key, ?string $default = null): ?string
+Config::getInt(string $key, int $default = 0): int
+Config::getBool(string $key, bool $default = false): bool
+Config::getArray(string $key, array $default = []): array
+Config::all(): array
+Config::version(): string
+Config::checksum(): string
+```
+
+### `Kislay\Config\Server`
+
+```php
+$server = new Kislay\Config\Server(['host' => '127.0.0.1', 'port' => 9011]);
+$server->listen('0.0.0.0', 9011);
+$server->setGlobal(array $config): bool;
+$server->setEnvironment(string $environment, array $config): bool;
+$server->setProject(string $project, array $config): bool;
+$server->setService(string $project, string $service, array $config): bool;
+$server->setNode(string $project, string $service, string $node, array $config): bool;
+$server->resolve(?string $environment = null, ?string $project = null, ?string $service = null, ?string $node = null): array;
+$server->version(): string;
+$server->save(string $path): bool;
+$server->load(string $path): bool;
+$server->run(): bool;
+$server->stop(): bool;
+```
+
+### `Kislay\Config\ConfigClient`
+
+Compatibility client retained for simple in-memory or delegated use:
+
+```php
+$client = new Kislay\Config\ConfigClient();
+$client->set('db.host', '127.0.0.1');
+$client->get('db.host');
+$client->all();
+```
+
+## HTTP Endpoints
+
+The standalone server exposes:
+
+- `GET /health`
+- `GET /v1/config/version`
+- `GET /v1/config/resolve?environment=prod&project=commerce&service=order-service&node=order-1`
+- `PUT /v1/config/global`
+- `PUT /v1/config/environments/{environment}`
+- `PUT /v1/config/projects/{project}`
+- `PUT /v1/config/projects/{project}/services/{service}`
+- `PUT /v1/config/projects/{project}/services/{service}/nodes/{node}`
+
+`PUT` bodies accept JSON objects. Nested objects are flattened into dotted keys inside the runtime snapshot.
+
+## Production Notes
+
+Current Phase 1 behavior:
+- runtime refresh is explicit with `Config::refresh()`
+- `cache_file` stores the last successful remote snapshot
+- array values are stored as JSON and returned through `getArray()`
+- `all()` returns the resolved flat dotted-key map
+
+Not in Phase 1 yet:
+- background polling thread
+- auth tokens / TLS
+- config revision history / rollback API
+- clustered config servers
+
+## Example
+
+See `/tmp/kislayphp_config_phase1/example.php` for a minimal server/client walkthrough.
+
+## License
+
+[Apache License 2.0](LICENSE)
