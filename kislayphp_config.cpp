@@ -2204,12 +2204,9 @@ PHP_METHOD(KislayPHPConfigServer, run) {
 
         if (request.method == "GET" && request.path == "/v1/config/resolve") {
             std::map<std::string, std::string> query = kislay_parse_query(request.query);
-            std::string environment = query["environment"];
-            std::string project = query["project"];
-            std::string service = query["service"];
-            std::string node = query["node"];
             pthread_mutex_lock(&obj->lock);
-            flat_map_t resolved = kislay_server_resolve_locked(obj, environment, project, service, node);
+            flat_map_t resolved = kislay_server_resolve_locked(obj,
+                query["environment"], query["project"], query["service"], query["node"]);
             std::string version = obj->version;
             pthread_mutex_unlock(&obj->lock);
             std::string payload = kislay_server_response_json(version, resolved, kislay_checksum_for_map(resolved));
